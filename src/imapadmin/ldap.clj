@@ -16,9 +16,13 @@
 (defn ldap_test [user password]
   (ldap/get (ldap_connect user password) user))
 
-
 (defn authenticate [authorization]
   (let [[username password] (extract_credentials authorization)]
     (try
       (ldap_test username password)
       (catch Exception e false))))
+
+(defn get_domains [authorization]
+  (let [[username password] (extract_credentials authorization)]
+    (let [server (ldap_connect username password)]
+      (ldap/search server "ou=maildomains,dc=esav,dc=fi" { :scope :one }))))
