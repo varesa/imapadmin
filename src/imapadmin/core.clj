@@ -24,20 +24,36 @@
   (ring-response {:status 401 :some "abc"}
                  {:headers {"WWW-Authenticate" "Basic"}}))
 
+(def resource-defaults
+  {:available-media-types ["application/json"]
+   :authorized? authorized?
+   :handle-unauthorized auth_prompt})
+
+(defn handler-domains [ctx]
+  (def domains [])
+  (println "Handling")
+  (let [ldap_domains (get_domains (get_authz_header ctx))]
+    (println ldap_domains)
+    (doseq [domain ldap_domains]
+      (def domains (conj domains (get-in domain [:dc])))))
+  domains)
+
+(defresource resource-domain [dom]
+             resource-defaults
+             :handle-ok (fn [ctx] (format "This is domain %s" dom)))
+
 (defroutes app
            (ANY "/" [] (resource
-                         :available-media-types ["application/json"]
-                         :authorized? authorized?
-                         :handle-unauthorized auth_prompt
-
+                         resource-defaults
                          :handle-ok "Ok"))
 
            (ANY "/domains" [] (resource
-                                :available-media-types ["application/json"]
-                                :authorized? authorized?
-                                :handle-unauthorized auth_prompt
+                                resource-defaults
+                                :handle-ok handler-domains))
 
-                                :handle-ok (fn [ctx] (get_domains (get_authz_header ctx)) ))))
+           (ANY "/domains/:d" [d] (resource-domain d)))
+
+
 
 (def handler
   (-> app
